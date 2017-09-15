@@ -13,7 +13,7 @@ import android.view.WindowManager;
 public class Orientation implements SensorEventListener {
 
   public interface Listener {
-    void onOrientationChanged(float pitch, float roll);
+    void onOrientationChanged(float xaccel, float yaccel, float zaccel, float netaccel, int sensorType);
   }
 
   private static final int SENSOR_DELAY_MICROS = 50 * 1000; // 50ms
@@ -28,12 +28,12 @@ public class Orientation implements SensorEventListener {
   private int mLastAccuracy;
   private Listener mListener;
 
-  public Orientation(Activity activity) {
+  public Orientation(Activity activity, int SensorType) {
     mWindowManager = activity.getWindow().getWindowManager();
     mSensorManager = (SensorManager) activity.getSystemService(Activity.SENSOR_SERVICE);
 
     // Can be null if the sensor hardware is not available
-    mRotationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+    mRotationSensor = mSensorManager.getDefaultSensor(SensorType);
   }
 
   public void startListening(Listener listener) {
@@ -69,12 +69,12 @@ public class Orientation implements SensorEventListener {
       return;
     }
     if (event.sensor == mRotationSensor) {
-      updateOrientation(event.values);
+      updateOrientation(event.values,mRotationSensor.getType());
     }
   }
 
   @SuppressWarnings("SuspiciousNameCombination")
-  private void updateOrientation(float[] rotationVector) {
+  private void updateOrientation(float[] rotationVector, int sensorType) { //rotationVector gives acceleration values and gyroVector gives gyroscope read values
     float[] rotationMatrix = new float[9];
     SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationVector);
 
@@ -111,10 +111,15 @@ public class Orientation implements SensorEventListener {
     float[] orientation = new float[3];
     SensorManager.getOrientation(adjustedRotationMatrix, orientation);
 
+    double xaccel = Math.pow(rotationVector[0],2.0);
+    double yaccel = Math.pow(rotationVector[1],2.0);
+    double zaccel = Math.pow(rotationVector[2],2.0);
+    float net_accel_magnitude = (float) Math.pow(xaccel+yaccel+zaccel,0.5);
+
     // Convert radians to degrees
     float pitch = orientation[1] * -57;
     float roll = orientation[2] * -57;
 
-    mListener.onOrientationChanged(pitch, roll);
+    mListener.onOrientationChanged((float)xaccel,(float)yaccel,(float)zaccel,net_accel_magnitude, sensorType);
   }
 }
